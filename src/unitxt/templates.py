@@ -609,7 +609,7 @@ class MultipleChoiceTemplate(InputFormatTemplate):
         target = reference_fields[self.target_field]
         return target, [target]
 
-    def _get_correct_answer_info(self, input_fields, reference_fields):
+    def _get_correct_answer_info(self, input_fields: Dict[str, Any], reference_fields: Dict[str, Any])-> Tuple[str, List[str], int]:
         """
         Helper method to get common information about the correct answer.
 
@@ -621,7 +621,7 @@ class MultipleChoiceTemplate(InputFormatTemplate):
         choices = input_fields[self.choices_field].copy()  # Create a copy to avoid modifying original
         return correct_answer, choices, target_index
 
-    def _update_fields(self, input_fields, reference_fields, new_choices, correct_answer):
+    def _update_fields(self, input_fields: Dict[str, Any], reference_fields: Dict[str, Any], new_choices, correct_answer)-> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Helper method to update both input and reference fields.
         """
@@ -630,7 +630,7 @@ class MultipleChoiceTemplate(InputFormatTemplate):
         reference_fields[self.target_field] = new_choices.index(correct_answer)
         return input_fields, reference_fields
 
-    def place_correct_at(self, input_fields, reference_fields, target_position=0):
+    def place_correct_at(self, input_fields: Dict[str, Any], reference_fields: Dict[str, Any], target_position: int = 0)-> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Modifies the choices array by moving the correct answer to the specified position.
         """
@@ -647,7 +647,7 @@ class MultipleChoiceTemplate(InputFormatTemplate):
 
         return self._update_fields(input_fields, reference_fields, choices, correct_answer)
 
-    def sort_by_length(self, input_fields, reference_fields, reverse=False):
+    def sort_by_length(self, input_fields: Dict[str, Any], reference_fields: Dict[str, Any], reverse: bool = False)-> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Sorts the choices array by the length of each answer.
         """
@@ -658,7 +658,7 @@ class MultipleChoiceTemplate(InputFormatTemplate):
 
         return self._update_fields(input_fields, reference_fields, sorted_choices, correct_answer)
 
-    def shuffle_choices_with_seed(self, input_fields, reference_fields, random_seed=None):
+    def shuffle_choices_with_seed(self, input_fields: Dict[str, Any], reference_fields: Dict[str, Any], random_seed: Optional[int] = None)-> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Shuffles the choices using a random seed.
         """
@@ -670,7 +670,7 @@ class MultipleChoiceTemplate(InputFormatTemplate):
 
         return self._update_fields(input_fields, reference_fields, choices, correct_answer)
 
-    def sort_alphabetically(self, input_fields, reference_fields, reverse=False):
+    def sort_alphabetically(self, input_fields: Dict[str, Any], reference_fields: Dict[str, Any], reverse: bool = False)-> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Sorts the choices alphabetically.
         """
