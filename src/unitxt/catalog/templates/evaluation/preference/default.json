@@ -9,7 +9,14 @@
         "processors.to_string_stripped",
         "processors.first_character"
     ],
-    "shuffle_choices": true,
+    "choices_order": {
+       "method": "shuffle_choices_with_seed",
+       "params": {
+           "reverse": false,
+           "target_position": 0,
+           "random_seed": null
+       }
+    },
     "title_fields": [
         "input_type",
         "output_type"

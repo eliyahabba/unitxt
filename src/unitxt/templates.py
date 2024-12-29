@@ -504,7 +504,7 @@ class MultipleChoiceTemplate(InputFormatTemplate):
     source_choice_format: str = "{choice_numeral}. {choice_text}"
     target_choice_format: str = "{choice_numeral}"
     enumerator: str = "capitals"
-    shuffle_choices: bool = False
+    choices_order: dict = None
 
     def prepare(self):
         super().prepare()
@@ -609,21 +609,105 @@ class MultipleChoiceTemplate(InputFormatTemplate):
         target = reference_fields[self.target_field]
         return target, [target]
 
+    def _get_correct_answer_info(self, input_fields, reference_fields):
+        """
+        Helper method to get common information about the correct answer.
+
+        Returns:
+            tuple: (correct_answer, original_choices, target_index)
+        """
+        target_index = self.outputs_to_target_index(reference_fields)
+        correct_answer = reference_fields[self.choices_field][target_index]
+        choices = input_fields[self.choices_field].copy()  # Create a copy to avoid modifying original
+        return correct_answer, choices, target_index
+
+    def _update_fields(self, input_fields, reference_fields, new_choices, correct_answer):
+        """
+        Helper method to update both input and reference fields.
+        """
+        input_fields[self.choices_field] = new_choices
+        reference_fields[self.choices_field] = new_choices
+        reference_fields[self.target_field] = new_choices.index(correct_answer)
+        return input_fields, reference_fields
+
+    def place_correct_at(self, input_fields, reference_fields, target_position=0):
+        """
+        Modifies the choices array by moving the correct answer to the specified position.
+        """
+        correct_answer, choices, _ = self._get_correct_answer_info(input_fields, reference_fields)
+
+        # Validate target position
+        if not 0 <= target_position < len(choices):
+            raise ValueError(
+                f"Target position {target_position} is out of range. Must be between 0 and {len(choices) - 1}")
+
+        # Reorder choices
+        choices.remove(correct_answer)
+        choices.insert(target_position, correct_answer)
+
+        return self._update_fields(input_fields, reference_fields, choices, correct_answer)
+
+    def sort_by_length(self, input_fields, reference_fields, reverse=False):
+        """
+        Sorts the choices array by the length of each answer.
+        """
+        correct_answer, choices, _ = self._get_correct_answer_info(input_fields, reference_fields)
+
+        # Sort choices
+        sorted_choices = sorted(choices, key=len, reverse=reverse)
+
+        return self._update_fields(input_fields, reference_fields, sorted_choices, correct_answer)
+
+    def shuffle_choices_with_seed(self, input_fields, reference_fields, random_seed=None):
+        """
+        Shuffles the choices using a random seed.
+        """
+        correct_answer, choices, _ = self._get_correct_answer_info(input_fields, reference_fields)
+
+        # Generate and apply shuffle
+        random_generator = new_random_generator(random_seed or input_fields)
+        random_generator.shuffle(choices)
+
+        return self._update_fields(input_fields, reference_fields, choices, correct_answer)
+
+    def sort_alphabetically(self, input_fields, reference_fields, reverse=False):
+        """
+        Sorts the choices alphabetically.
+        """
+        correct_answer, choices, _ = self._get_correct_answer_info(input_fields, reference_fields)
+        sorted_choices = sorted(choices, reverse=reverse)
+        return self._update_fields(input_fields, reference_fields, sorted_choices, correct_answer)
+
     def preprocess_input_and_reference_fields(
-        self, input_fields: Dict[str, Any], reference_fields: Dict[str, Any]
+            self, input_fields: Dict[str, Any], reference_fields: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        if self.shuffle_choices:
-            target_index = self.outputs_to_target_index(reference_fields)
-            original_label_choice = reference_fields[self.choices_field][target_index]
-            choices = input_fields[self.choices_field]
-            random_seed = {**input_fields}
+        if self.choices_order is not None:
+            try:
+                ALLOWED_PARAMS = {
+                    'place_correct_at': {'target_position'},
+                    'sort_by_length': {'reverse'},
+                    'shuffle_choices_with_seed': {'random_seed'},
+                    'sort_alphabetically': {'reverse'}
+                }
 
-            random_generator = new_random_generator(random_seed)
-            random_generator.shuffle(choices)
-            input_fields[self.choices_field] = choices
+                function_name = self.choices_order["method"]
+                if hasattr(self, function_name):
+                    function = getattr(self, function_name)
+                    allowed_params = ALLOWED_PARAMS.get(function_name, set())
+                    params = {
+                        k: v for k, v in self.choices_order.get("params", {}).items()
+                        if k in allowed_params
+                    }
 
-            reference_fields[self.choices_field] = choices
-            reference_fields[self.target_field] = choices.index(original_label_choice)
+                    input_fields, reference_fields = function(
+                        input_fields=input_fields,
+                        reference_fields=reference_fields,
+                        **params
+                    )
+                else:
+                    raise ValueError(f"Unknown ordering method: {function_name}")
+            except (KeyError, AttributeError) as e:
+                raise ValueError(f"Invalid choices_order configuration: {str(e)}")
 
         return input_fields, reference_fields
 
